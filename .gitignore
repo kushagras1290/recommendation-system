@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+*.db
+model_artifacts/
+test_model_artifacts/
+test_recsys.db
+smoke_test.db
+
+# Node
+node_modules/
+.next/
+out/
+.npm/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Render / Docker
+*.log
