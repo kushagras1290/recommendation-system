@@ -9,7 +9,7 @@ services:
     rootDir: apps/backend
     envVars:
       - key: DATABASE_URL
-        sync: false          # Set this in Render dashboard — your Supabase connection string
+        sync: false          # postgresql://postgres:ENCODED_PASSWORD@db.jwnyyrtdyxehgcpemmsc.supabase.co:5432/postgres
       - key: CORS_ORIGINS
         value: '["https://recsys-frontend.onrender.com"]'
       - key: MODEL_DIR
