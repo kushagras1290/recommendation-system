@@ -53,7 +53,7 @@ function RecCard({ rec }: { rec: RecommendationItem }) {
             )}
             {rating && (
               <span style={{ fontSize: "0.7rem", color: "#f59e0b", fontWeight: 600 }}>
-                ★ {rating.toFixed(1)}
+                * {rating.toFixed(1)}
               </span>
             )}
           </div>
@@ -75,7 +75,7 @@ function RecCard({ rec }: { rec: RecommendationItem }) {
         </div>
         {description && (
           <p style={{ fontSize: "0.75rem", color: "#475569", marginTop: 4, lineHeight: 1.4 }}>
-            {description.length > 100 ? description.slice(0, 100) + "…" : description}
+            {description.length > 100 ? `${description.slice(0, 100)}...` : description}
           </p>
         )}
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
@@ -115,9 +115,11 @@ export default function RecommendationsPage() {
     fetchUsers()
       .then((res) => {
         if (res.success) {
-          const u = (res as any).data?.users as User[];
-          setUsers(u || []);
-          if (u?.length) setSelectedUser(u[0].external_id);
+          const fetchedUsers = res.data.users;
+          setUsers(fetchedUsers);
+          if (fetchedUsers.length) {
+            setSelectedUser(fetchedUsers[0].external_id);
+          }
         }
       })
       .finally(() => setLoadingUsers(false));
@@ -130,14 +132,14 @@ export default function RecommendationsPage() {
     try {
       const res = await fetchRecommendations(selectedUser, k, model);
       if (res.success) {
-        setRecs((res as any).data.recommendations);
-        setModelUsed((res as any).data.model_used);
-        setIsColdStart((res as any).data.is_cold_start);
+        setRecs(res.data.recommendations);
+        setModelUsed(res.data.model_used);
+        setIsColdStart(res.data.is_cold_start);
       } else {
-        setError((res as any).error?.message || "Failed to fetch recommendations");
+        setError(res.error.message || "Failed to fetch recommendations");
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -165,7 +167,7 @@ export default function RecommendationsPage() {
             </label>
             <select value={selectedUser} onChange={(e) => setSelectedUser(e.target.value)} disabled={loadingUsers}>
               {loadingUsers ? (
-                <option>Loading…</option>
+                <option>Loading...</option>
               ) : (
                 users.map((u) => (
                   <option key={u.external_id} value={u.external_id}>
@@ -198,7 +200,7 @@ export default function RecommendationsPage() {
             />
           </div>
           <button className="btn-primary" onClick={handleFetch} disabled={loading || !selectedUser}>
-            {loading ? "Loading…" : "Get Recommendations"}
+            {loading ? "Loading..." : "Get Recommendations"}
           </button>
         </div>
 
@@ -229,7 +231,7 @@ export default function RecommendationsPage() {
                   color: "#fbbf24",
                 }}
               >
-                Cold-start — showing popular items
+                Cold-start - showing popular items
               </span>
             )}
             {modelUsed && recs.length > 0 && !isColdStart && (

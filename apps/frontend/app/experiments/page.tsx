@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchExperiments, createExperiment } from "@/lib/api";
-import type { ExperimentResult, VariantResult } from "@/lib/types";
+import type { ExperimentResult } from "@/lib/types";
 
 const MODELS = ["popularity", "content_based", "collaborative_filtering", "ranker"];
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
@@ -150,23 +150,23 @@ export default function ExperimentsPage() {
   const [creating, setCreating] = useState(false);
   const [createResult, setCreateResult] = useState<string | null>(null);
 
-  async function loadExperiments() {
+  const loadExperiments = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetchExperiments();
       if (res.success) {
-        setExperiments((res as any).data?.experiments || []);
+        setExperiments(res.data.experiments);
       } else {
-        setError((res as any).error?.message || "Failed to load");
+        setError(res.error.message || "Failed to load");
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  useEffect(() => { loadExperiments(); }, []);
+  useEffect(() => { loadExperiments(); }, [loadExperiments]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -186,10 +186,10 @@ export default function ExperimentsPage() {
         setFormName(""); setFormDesc("");
         await loadExperiments();
       } else {
-        setCreateResult((res as any).error?.message || "Failed");
+        setCreateResult(res.error.message || "Failed");
       }
-    } catch (err: any) {
-      setCreateResult(err.message);
+    } catch (err) {
+      setCreateResult(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setCreating(false);
     }
@@ -262,7 +262,7 @@ export default function ExperimentsPage() {
             </div>
             <div style={{ display: "flex", alignItems: "flex-end" }}>
               <button className="btn-primary" type="submit" disabled={creating} style={{ width: "100%" }}>
-                {creating ? "Creating…" : "Create Experiment"}
+                {creating ? "Creating..." : "Create Experiment"}
               </button>
             </div>
           </div>

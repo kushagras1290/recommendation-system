@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import os
 import pickle
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import numpy as np
 import structlog
@@ -11,6 +12,8 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 MODEL_VERSION = "popularity_v1"
+InteractionRecord = Mapping[str, Any]
+ItemRecord = Mapping[str, Any]
 
 
 class PopularityScore(NamedTuple):
@@ -19,7 +22,7 @@ class PopularityScore(NamedTuple):
     title: str
     category: str
     score: float
-    attributes: dict
+    attributes: dict[str, Any]
 
 
 class PopularityModel:
@@ -33,11 +36,11 @@ class PopularityModel:
     def __init__(self, decay_lambda: float = 0.005) -> None:
         self.decay_lambda = decay_lambda
         self._scores: dict[int, float] = {}
-        self._item_meta: dict[int, dict] = {}
+        self._item_meta: dict[int, ItemRecord] = {}
         self._trained_at: datetime | None = None
         self.version = MODEL_VERSION
 
-    def fit(self, interactions: list[dict], items: list[dict]) -> None:
+    def fit(self, interactions: Sequence[InteractionRecord], items: Sequence[ItemRecord]) -> None:
         """
         interactions: list of {item_id, weight, timestamp (datetime)}
         items: list of {id, external_id, title, category, attributes}
@@ -46,9 +49,11 @@ class PopularityModel:
         scores: dict[int, float] = {}
 
         for event in interactions:
-            item_id = event["item_id"]
-            weight = event["weight"]
+            item_id = int(event["item_id"])
+            weight = float(event["weight"])
             ts = event["timestamp"]
+            if not isinstance(ts, datetime):
+                raise TypeError("Interaction timestamp must be a datetime")
             if ts.tzinfo is None:
                 ts = ts.replace(tzinfo=timezone.utc)
             days_ago = (now - ts).total_seconds() / 86400
@@ -56,7 +61,7 @@ class PopularityModel:
             scores[item_id] = scores.get(item_id, 0.0) + weight * decay
 
         self._scores = scores
-        self._item_meta = {it["id"]: it for it in items}
+        self._item_meta = {int(it["id"]): it for it in items}
         self._trained_at = now
         logger.info("popularity_model_fitted", n_items=len(scores))
 
@@ -71,13 +76,14 @@ class PopularityModel:
         results = []
         for item_id, score in sorted_items:
             meta = self._item_meta.get(item_id, {})
+            attributes = meta.get("attributes", {})
             results.append(PopularityScore(
                 item_id=item_id,
-                external_id=meta.get("external_id", str(item_id)),
-                title=meta.get("title", "Unknown"),
-                category=meta.get("category", ""),
+                external_id=str(meta.get("external_id", str(item_id))),
+                title=str(meta.get("title", "Unknown")),
+                category=str(meta.get("category", "")),
                 score=float(score),
-                attributes=meta.get("attributes", {}),
+                attributes=attributes if isinstance(attributes, dict) else {},
             ))
         return results
 
@@ -92,7 +98,7 @@ class PopularityModel:
 
     def load(self, path: str) -> None:
         with open(path, "rb") as f:
-            data = pickle.load(f)  # nosec — loading from trusted local path only
+            data = pickle.load(f)  # nosec: loading from trusted local path only
         self._scores = data["scores"]
         self._item_meta = data["item_meta"]
         self._trained_at = data["trained_at"]

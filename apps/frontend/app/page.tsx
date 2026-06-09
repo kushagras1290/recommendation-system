@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { fetchHealth, fetchUsers, fetchEvaluations, triggerTraining } from "@/lib/api";
-import type { HealthResponse, ModelStatus, User, EvaluationResponse } from "@/lib/types";
+import type { HealthResponse, User, EvaluationResponse } from "@/lib/types";
 
 interface StatCardProps {
   label: string;
@@ -68,12 +68,15 @@ export default function DashboardPage() {
           fetchUsers(),
           fetchEvaluations(),
         ]);
-        if (h.status === "fulfilled" && h.value.success)
-          setHealth((h.value as any).data);
-        if (u.status === "fulfilled" && u.value.success)
-          setUsers(((u.value as any).data?.users as User[]) || []);
-        if (e.status === "fulfilled" && e.value.success)
-          setEvaluation((e.value as any).data);
+        if (h.status === "fulfilled" && h.value.success) {
+          setHealth(h.value.data);
+        }
+        if (u.status === "fulfilled" && u.value.success) {
+          setUsers(u.value.data.users);
+        }
+        if (e.status === "fulfilled" && e.value.success) {
+          setEvaluation(e.value.data);
+        }
       } finally {
         setLoading(false);
       }
@@ -87,21 +90,22 @@ export default function DashboardPage() {
     try {
       const res = await triggerTraining();
       if (res.success) {
-        const models = (res as any).data?.models || {};
+        const models = res.data.models;
         const ok = Object.values(models).filter((v) => v === "ok").length;
-        setTrainResult(`Training complete — ${ok}/${Object.keys(models).length} models trained.`);
-        // Reload health
+        setTrainResult(`Training complete - ${ok}/${Object.keys(models).length} models trained.`);
         const h = await fetchHealth();
-        if (h.success) setHealth((h as any).data);
+        if (h.success) {
+          setHealth(h.data);
+        }
       }
-    } catch (err: any) {
-      setTrainResult(`Error: ${err.message}`);
+    } catch (err) {
+      setTrainResult(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
     } finally {
       setTraining(false);
     }
   }
 
-  const bestModel = evaluation?.models.sort((a, b) => b.ndcg_at_10 - a.ndcg_at_10)[0];
+  const bestModel = evaluation ? [...evaluation.models].sort((a, b) => b.ndcg_at_10 - a.ndcg_at_10)[0] : undefined;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -112,12 +116,12 @@ export default function DashboardPage() {
             Recommendation System Dashboard
           </h1>
           <p style={{ color: "#64748b", fontSize: "0.875rem", marginTop: 4 }}>
-            End-to-end ML pipeline — candidate generation · ranking · evaluation · A/B testing
+            End-to-end ML pipeline - candidate generation, ranking, evaluation, and A/B testing
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn-primary" onClick={handleTrain} disabled={training}>
-            {training ? "Training…" : "Train Models"}
+            {training ? "Training..." : "Train Models"}
           </button>
           <Link href="/recommendations">
             <button className="btn-secondary">Get Recs</button>
@@ -143,25 +147,25 @@ export default function DashboardPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem" }}>
         <StatCard
           label="Total Users"
-          value={loading ? "—" : users.length}
+          value={loading ? "-" : users.length}
           sub="seeded for demo"
           color="#3b82f6"
         />
         <StatCard
           label="Total Items"
-          value={loading ? "—" : evaluation?.total_items ?? "—"}
+          value={loading ? "-" : evaluation?.total_items ?? "-"}
           sub="movies catalog"
           color="#8b5cf6"
         />
         <StatCard
           label="Training Events"
-          value={loading ? "—" : evaluation?.train_size ?? "—"}
+          value={loading ? "-" : evaluation?.train_size ?? "-"}
           sub="interaction logs"
           color="#10b981"
         />
         <StatCard
           label="Best NDCG@10"
-          value={loading ? "—" : bestModel ? bestModel.ndcg_at_10.toFixed(3) : "—"}
+          value={loading ? "-" : bestModel ? bestModel.ndcg_at_10.toFixed(3) : "-"}
           sub={bestModel ? bestModel.model_name : "train first"}
           color="#f59e0b"
         />
@@ -182,7 +186,7 @@ export default function DashboardPage() {
                 color: health?.status === "ok" ? "#4ade80" : "#f87171",
               }}
             >
-              DB {health?.database || "—"}
+              DB {health?.database || "-"}
             </span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -214,7 +218,7 @@ export default function DashboardPage() {
               href="/evaluations"
               style={{ fontSize: "0.8rem", color: "#3b82f6" }}
             >
-              Full report →
+              Full report -&gt;
             </Link>
           </div>
           {loading ? (
@@ -254,17 +258,17 @@ export default function DashboardPage() {
       {/* Quick Links */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1rem" }}>
         {[
-          { href: "/recommendations", emoji: "🎬", title: "Explore Recs", desc: "Get personalised recommendations for any user" },
-          { href: "/events", emoji: "📊", title: "Log Events", desc: "Record view, click, watch, and rating events" },
-          { href: "/evaluations", emoji: "📈", title: "Metrics", desc: "Precision@K, Recall@K, NDCG@K, MRR, coverage, diversity" },
-          { href: "/experiments", emoji: "🧪", title: "A/B Tests", desc: "Compare models and view expected lift" },
+          { href: "/recommendations", marker: "REC", title: "Explore Recs", desc: "Get personalised recommendations for any user" },
+          { href: "/events", marker: "LOG", title: "Log Events", desc: "Record view, click, watch, and rating events" },
+          { href: "/evaluations", marker: "KPI", title: "Metrics", desc: "Precision@K, Recall@K, NDCG@K, MRR, coverage, diversity" },
+          { href: "/experiments", marker: "A/B", title: "A/B Tests", desc: "Compare models and view expected lift" },
         ].map((item) => (
           <Link key={item.href} href={item.href}>
             <div
               className="card card-hover"
               style={{ padding: "1.25rem", cursor: "pointer" }}
             >
-              <div style={{ fontSize: "1.75rem", marginBottom: 8 }}>{item.emoji}</div>
+              <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#3b82f6", marginBottom: 8 }}>{item.marker}</div>
               <h3 style={{ fontWeight: 600, color: "#f1f5f9", marginBottom: 4 }}>{item.title}</h3>
               <p style={{ fontSize: "0.8rem", color: "#64748b", lineHeight: 1.4 }}>{item.desc}</p>
             </div>
