@@ -17,6 +17,7 @@ node_modules/
 .next/
 out/
 .npm/
+package-lock.json
 
 # Environment
 .env
