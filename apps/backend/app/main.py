@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import uuid
 from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI, Request
+from sqlalchemy.exc import OperationalError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError as PydanticValidationError
@@ -26,10 +28,33 @@ configure_logging(settings.log_level)
 logger = structlog.get_logger(__name__)
 
 
+_DB_INIT_MAX_ATTEMPTS = 6
+_DB_INIT_BASE_WAIT = 5  # seconds; doubles each attempt → 5, 10, 20, 40, 80
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("startup", app=settings.app_name, debug=settings.debug)
-    init_db()
+    for attempt in range(1, _DB_INIT_MAX_ATTEMPTS + 1):
+        try:
+            init_db()
+            break
+        except OperationalError as exc:
+            if attempt == _DB_INIT_MAX_ATTEMPTS:
+                logger.error(
+                    "db_init_failed",
+                    attempts=_DB_INIT_MAX_ATTEMPTS,
+                    error=str(exc),
+                )
+                raise
+            wait = _DB_INIT_BASE_WAIT * (2 ** (attempt - 1))
+            logger.warning(
+                "db_init_retry",
+                attempt=attempt,
+                wait_seconds=wait,
+                error=str(exc),
+            )
+            await asyncio.sleep(wait)
     seed_if_empty()
     yield
     logger.info("shutdown")
