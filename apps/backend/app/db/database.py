@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from typing import Generator
 
 import structlog
-from sqlalchemy import create_engine, text
+from sqlalchemy import MetaData, create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 logger = structlog.get_logger(__name__)
@@ -18,14 +18,19 @@ def _get_engine():
     if _engine is None:
         from app.core.config import get_settings
         settings = get_settings()
-        connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
-        _engine = create_engine(
+        is_sqlite = settings.database_url.startswith("sqlite")
+        connect_args = {"check_same_thread": False} if is_sqlite else {}
+        engine = create_engine(
             settings.database_url,
             connect_args=connect_args,
             pool_pre_ping=True,
-            **({"pool_size": 5, "max_overflow": 10, "pool_timeout": 30} if not settings.database_url.startswith("sqlite") else {}),
+            **({"pool_size": 5, "max_overflow": 10, "pool_timeout": 30} if not is_sqlite else {}),
             echo=settings.debug,
         )
+        if is_sqlite:
+            # SQLite has no schema support; map recsys → default schema
+            engine = engine.execution_options(schema_translate_map={"recsys": None})
+        _engine = engine
     return _engine
 
 
@@ -37,7 +42,7 @@ def _get_session_factory():
 
 
 class Base(DeclarativeBase):
-    pass
+    metadata = MetaData(schema="recsys")
 
 
 # Convenience alias used by tests that set up their own engine
@@ -50,7 +55,11 @@ def reset_engine(new_engine) -> None:
 
 def init_db() -> None:
     from app.db import models as _models  # noqa: F401 — registers ORM models with Base
-    Base.metadata.create_all(bind=_get_engine(), checkfirst=True)
+    engine = _get_engine()
+    if not str(engine.url).startswith("sqlite"):
+        with engine.begin() as conn:
+            conn.execute(text("CREATE SCHEMA IF NOT EXISTS recsys"))
+    Base.metadata.create_all(bind=engine, checkfirst=True)
     from app.core.config import get_settings
     settings = get_settings()
     logger.info("database_initialized", url=settings.database_url.split("@")[-1])

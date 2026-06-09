@@ -23,7 +23,9 @@ from app.db import database as db_module
 from app.db.database import Base
 
 TEST_DB_URL = "sqlite:///./test_recsys.db"
-_test_engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
+_test_engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False}).execution_options(
+    schema_translate_map={"recsys": None}
+)
 _TestSession = sessionmaker(autocommit=False, autoflush=False, bind=_test_engine)
 
 # Patch the module-level engine before any test runs
