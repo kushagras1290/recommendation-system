@@ -18,6 +18,7 @@ node_modules/
 out/
 .npm/
 package-lock.json
+!apps/frontend/package-lock.json
 
 # Environment
 .env
