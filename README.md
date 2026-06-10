@@ -2,8 +2,8 @@
 
 A production-grade ML portfolio project: candidate generation, ranking, offline evaluation, and A/B testing — with a live dashboard.
 
-**Live Demo:** `https://recsys-frontend.onrender.com`  
-**API Docs:** `https://recsys-backend.onrender.com/docs`
+**Live Demo:** `https://recsys-frontend-9vxz.onrender.com`  
+**API Docs:** `https://recsys-backend-tjt0.onrender.com/docs`
 
 ---
 

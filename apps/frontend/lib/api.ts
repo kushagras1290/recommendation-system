@@ -36,8 +36,8 @@ async function request<T>(
 }
 
 // Health
-export async function fetchHealth(): Promise<ApiResponse<HealthResponse>> {
-  return request<ApiResponse<HealthResponse>>("/health");
+export async function fetchHealth(): Promise<HealthResponse> {
+  return request<HealthResponse>("/health");
 }
 
 // Users

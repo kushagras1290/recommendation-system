@@ -68,8 +68,8 @@ export default function DashboardPage() {
           fetchUsers(),
           fetchEvaluations(),
         ]);
-        if (h.status === "fulfilled" && h.value.success) {
-          setHealth(h.value.data);
+        if (h.status === "fulfilled") {
+          setHealth(h.value);
         }
         if (u.status === "fulfilled" && u.value.success) {
           setUsers(u.value.data.users);
@@ -94,9 +94,7 @@ export default function DashboardPage() {
         const ok = Object.values(models).filter((v) => v === "ok").length;
         setTrainResult(`Training complete - ${ok}/${Object.keys(models).length} models trained.`);
         const h = await fetchHealth();
-        if (h.success) {
-          setHealth(h.data);
-        }
+        setHealth(h);
       }
     } catch (err) {
       setTrainResult(`Error: ${err instanceof Error ? err.message : "Unknown error"}`);
