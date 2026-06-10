@@ -15,7 +15,7 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: CORS_ORIGINS
-        value: '["https://recsys-frontend.onrender.com"]'
+        value: '["http://localhost:3000","http://localhost:3001","https://recsys-frontend-9vxz.onrender.com"]'
       - key: MODEL_DIR
         value: ./model_artifacts
       - key: LOG_LEVEL
@@ -36,6 +36,6 @@ services:
       - key: NODE_VERSION
         value: 22.12.0
       - key: NEXT_PUBLIC_API_URL
-        value: https://recsys-backend.onrender.com
+        value: https://recsys-backend-tjt0.onrender.com
       - key: NODE_ENV
         value: production
